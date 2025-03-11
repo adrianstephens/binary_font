@@ -35,5 +35,5 @@
     "@isopodlabs/binary": "^1.0.3",
     "@isopodlabs/xml": "^1.0.3"
   },
-  "version": "0.3.0"
+  "version": "0.3.1"
 }
