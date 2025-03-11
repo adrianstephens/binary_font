@@ -5,9 +5,8 @@ import {
 	float2x2,	det2x2, 
 	float2x3,	identity2x3,	mul2x3,	matmul2,
 	circle,
-	color,
 } from './vector';
-import {curveVertex, transformCurve, reverseCurve, direction, FILL, Fill, Layer} from './curves';
+import {color, curveVertex, transformCurve, reverseCurve, direction, FILL, Fill, Layer} from './curves';
 
 const u8 		= binary.UINT8;
 const u16 		= binary.UINT16_BE;
@@ -85,16 +84,16 @@ export class PaintContext {
 	transform		= identity2x3;
 	private curves: curveVertex[]	= [];
 
-	constructor(public ttf: Font, public palette?: color[]) {}
+	constructor(public font: Font, public COLR: COLR, public palette?: color[]) {}
 
 	getLayers(start: number, length: number) {
-		return this.ttf.COLR!.v1!.layers!.slice(start, start + length);
+		return this.COLR!.v1!.layers!.slice(start, start + length);
 	}
 	getGlyph(id: number) {
-		return this.ttf.getGlyph(id);
+		return this.font.getGlyph(id);
 	}
 	getCOLRGlyph(id: number) {
-		const	base	= this.ttf.COLR!.v1!.baseGlyphs!;
+		const	base	= this.COLR!.v1!.baseGlyphs!;
 		return base[id].paint;
 	}
 	getColour(i: number) {
@@ -150,7 +149,7 @@ class PaintColrLayers extends binary.Class({
 	numLayers:			u8,		// Number of offsets to paint tables to read from LayerList
 	firstLayerIndex:	u32,	// Index (base 0) into the LayerList
 }) {
-	static get(s: binary._stream) { return new this(s); }
+	//static get(s: binary._stream) { return new this(s); }
 	apply(ctx: PaintContext) {
 		for (const i of ctx.getLayers(this.firstLayerIndex, this.numLayers))
 			i.apply(ctx);
@@ -161,7 +160,7 @@ class PaintSolid extends binary.Class({
 	paletteIndex:	u16,
 	alpha:			fixed16,
 }) {
-	static get(s: binary._stream) { return new this(s); }
+	//static get(s: binary._stream) { return new this(s); }
 	apply(ctx: PaintContext) {
 		ctx.addLayer({type: FILL.SOLID, color: ctx.getColour(this.paletteIndex)});
 	}
@@ -173,7 +172,7 @@ class PaintLinearGradient extends binary.Class({
 	p1:	vec2(s16),			// End point
 	p2:	vec2(s16),			// Rotation point
 }) {
-	static get(s: binary._stream) { return new this(s); }
+	//static get(s: binary._stream) { return new this(s); }
 	apply(ctx: PaintContext) {
 		ctx.addLayer({
 			type:		FILL.LINEAR,
@@ -190,7 +189,7 @@ class PaintRadialGradient extends binary.Class({
 	start_centre: 	vec2(s16), start_radius: u16,
 	end_centre: 	vec2(s16), end_radius: u16,
 }) {
-	static get(s: binary._stream) { return new this(s); }
+	//static get(s: binary._stream) { return new this(s); }
 	apply(ctx: PaintContext) {
 		ctx.addLayer({
 			type:		FILL.RADIAL,
@@ -207,7 +206,7 @@ class PaintSweepGradient extends binary.Class({
 	startAngle:	fixed16,
 	endAngle:	fixed16,
 }) {
-	static get(s: binary._stream) { return new this(s); }
+	//static get(s: binary._stream) { return new this(s); }
 	apply(ctx: PaintContext) {
 		ctx.addLayer({
 			type:		FILL.SWEEP,
@@ -268,11 +267,12 @@ class PaintComposite extends SubPaint {
 class PaintColrGlyph extends binary.Class({
 	glyphID:	u16,		// Glyph ID for a BaseGlyphList base glyph
 }) {
-	static get(s: binary._stream) { return new this(s); }
+	//static get(s: binary._stream) { return new this(s); }
 	apply(ctx: PaintContext) {
 		ctx.getCOLRGlyph(this.glyphID).apply(ctx);
 	}
 }
+//type XX = binary.ReadType<PaintColrGlyph>;
 
 class PaintGlyph extends SubPaint {
 	glyphID:	number;		// Glyph ID for the source outline
@@ -431,13 +431,13 @@ export class COLR extends binary.Class({
 		itemVariationStoreOffset:	u32,	// Offset to ItemVariationStore> (may be NULL)
 	}),
 }) {
-	static get(s: binary._stream) { return new this(s); }
-	getGlyph(font: Font, id: number) {
+	//static get(s: binary._stream) { return new this(s); }
+	getGlyph(font: Font, cpal: binary.ReadType<typeof CPAL>|undefined, id: number) {
 		if (this.v1) {
 			const	base	= this.v1.baseGlyphs;
 			for (const i of base) {
 				if (i.glyphID === id) {
-					const ctx = new PaintContext(font, font.CPAL?.colors?.slice(font.CPAL?.colorRecordIndices[0]));
+					const ctx = new PaintContext(font, this, cpal?.colors?.slice(cpal?.colorRecordIndices[0]));
 					i.paint.apply(ctx);
 					return ctx.layers;
 				}

@@ -10,11 +10,6 @@ function getParseTreeNode<T extends ts.Node>(node: T) {
 	return node;
 }
 
-function setParentAndFlag(node: any, parent: ts.Node) {
-	node.flags &= ~ts.NodeFlags.Synthesized;
-	node.parent = parent;
-}
-
 export function kind(node: ts.Node): string {
 	return ts.SyntaxKind[node.kind];
 }
@@ -116,7 +111,7 @@ function resolveTypesTransformer(program: ts.Program): ts.TransformerFactory<ts.
 			}
 
 			function print(x: string) {
-				console.log('  '.repeat(depth), x);
+				console.log('  '.repeat(depth) + x);
 			}
 
 			function fixParents(node: ts.Node) {
@@ -151,6 +146,53 @@ function resolveTypesTransformer(program: ts.Program): ts.TransformerFactory<ts.
 				return ret as ts.TypeNode;
 			}
 			
+			function fixTypeReference(node: ts.TypeReferenceNode): ts.TypeReferenceNode {
+				const name	= node.typeName;
+				if (ts.isQualifiedName(name))
+					return node;
+
+				const symbol = (name as any).symbol;
+				if (symbol) {
+					const declarations = symbol.getDeclarations();
+					if (declarations && declarations.length > 0) {
+						const exported = isExported(declarations[0]);
+						if (!exported && !declarations[0].typeParameters) {
+							for (const statement of sourceFile.statements) {
+								if (ts.isTypeAliasDeclaration(statement) && isExported(statement) && statement !== declaration) {
+									if (ts.isTypeReferenceNode(statement.type) && ts.isIdentifier(statement.type.typeName) && statement.type.typeName.escapedText === name.escapedText) {
+										console.log("found");
+										const newName = factory.createIdentifier(statement.name.getText());
+										return factory.updateTypeReferenceNode(node, newName, node.typeArguments);
+									}
+									/*
+								} else if (ts.isImportDeclaration(statement)) {
+									const importClause = statement.importClause;
+									if (importClause && importClause.namedBindings && ts.isNamedImports(importClause.namedBindings)) {
+										for (const i of importClause.namedBindings.elements) {
+											if (i.propertyName?.escapedText === name.escapedText) {
+												console.log("found");
+												const newName = factory.createIdentifier(i.name.getText());
+												return factory.updateTypeReferenceNode(node, newName, node.typeArguments);
+											}
+										}
+
+									}*/
+								}
+							}
+						}
+
+						// add module prefix if missing
+						const prefix = moduleMap[declarations[0].getSourceFile().fileName];
+						if (prefix) {
+							const newName = factory.createQualifiedName(factory.createIdentifier(prefix), name.text);
+							return factory.updateTypeReferenceNode(node, newName, node.typeArguments);
+						}
+					}
+				}
+
+				return node;
+			}
+
 
 			//various type fixing
 			function visitSubType(node: ts.Node): ts.Node {
@@ -159,19 +201,12 @@ function resolveTypesTransformer(program: ts.Program): ts.TransformerFactory<ts.
 				if (ts.isQualifiedName(node))
 					return node;
 
-				// add module prefix if missing
-				if (ts.isIdentifier(node)) {
-					const symbol = (node as any).symbol;
-					if (symbol) {
-						const declarations = symbol.getDeclarations();
-						if (declarations && declarations.length > 0) {
-							const prefix = moduleMap[declarations[0].getSourceFile().fileName];
-							if (prefix)
-								return factory.createQualifiedName(factory.createIdentifier(prefix), node.text);
-						}
-					}
-				}
-		
+				if (ts.isTypeParameterDeclaration(node) || ts.isParameter(node))
+					return node;
+
+				if (ts.isTypeReferenceNode(node))
+					return fixTypeReference(node);
+	
 				++depth;
 				node = ts.visitEachChild(node, visitSubType, context);
 				--depth;
@@ -194,22 +229,51 @@ function resolveTypesTransformer(program: ts.Program): ts.TransformerFactory<ts.
 			}
 
 			function fixType(node: ts.TypeNode, declaration?: ts.Declaration) {
+				if (ts.isTypeReferenceNode(node) && !node.typeArguments)
+					return fixTypeReference(node);
+
 				const type		= typeChecker.getTypeAtLocation(node);
+/*
+				if (ts.isImportTypeNode(node)) {
+					//node.qualifier
+					if (node.qualifier && ts.isIdentifier(node.qualifier)) {
+						const text = node.qualifier.escapedText;
+						for (const statement of sourceFile.statements) {
+							if (ts.isImportDeclaration(statement)) {
+								const module = statement.moduleSpecifier;
+								if (ts.isStringLiteral(module)) {
+									const importClause = statement.importClause;
+									if (importClause && importClause.namedBindings && ts.isNamedImports(importClause.namedBindings)) {
+										for (const i of importClause.namedBindings.elements) {
+											if (i.propertyName?.escapedText === text) {
+												console.log("found");
+												importClause.getSourceFile();
+												const newName = factory.createIdentifier(i.name.getText());
+												//return factory.updateTypeReferenceNode(node, newName, node.typeArguments);
+											}
+										}
+
+									}
+								}
+							}
+						}
+					}
+				}
+*/
 				const typetext	= typeChecker.typeToString(type, declaration);
-				print('"'+typetext+'"');
+				//print('"'+typetext+'"');
 
 				let node1 = typetext === 'any' ? node : typeChecker.typeToTypeNode(type, declaration, typeformatflags);
 
 				if (node1) {
-					if (ts.isTypeReferenceNode(node1)) {
+					if (ts.isTypeReferenceNode(node1) && !node1.typeArguments)
+						return fixTypeReference(node1);
+
+					node1 = visitSubType(node1) as ts.TypeNode;
+					const text2 = serializeNode(node1);
+					//console.log("**AFTER**" + text2);
+					if (text2 !== 'any')
 						return node1;
-					} else {
-						node1 = visitSubType(node1) as ts.TypeNode;
-						const text2 = serializeNode(node1);
-						//console.log("**AFTER**" + text2);
-						if (text2 !== 'any')
-							return node1;
-					}
 				}
 
 				return node;
@@ -226,22 +290,6 @@ function resolveTypesTransformer(program: ts.Program): ts.TransformerFactory<ts.
 				//print((node as any).original.kind);
 				const save = declaration;
 				declaration = getParseTreeNode(node);
-				/*
-				if (!declaration) {
-					declaration = node;
-					const obj = node as any;
-					obj.flags &= ~ts.NodeFlags.Synthesized;
-					obj.parent = sourceFile;
-				}
-					*/
-/*
-				if (!node.parent) {
-					const obj = node as any;
-					if (obj.original)
-						obj.parent = obj.original.parent;
-				}
-					*/
-				//fixParents(node);
 				node = ts.visitEachChild(node, visitType, context);
 				declaration = save;
 				return node;
@@ -290,69 +338,16 @@ function resolveTypesTransformer(program: ts.Program): ts.TransformerFactory<ts.
 					return node;
 				}
 
-/*
-				if (ts.isClassDeclaration(node)) {
-					print(`fixing class ${node.name?.getText()}`);
-					++depth;
-					(node as any).parent = sourceFile;
-					const newMembers: ts.ClassElement[] = [];
-					for (const member of node.members) {
-						const param = ts.isMethodDeclaration(member) && hasSingleTypeParameter(member);
-						if (param) {
-							console.log(`Expanding generic method "${node.name?.escapedText}.${member.name}"`);
-							const members	= getMembersOfConstraintType(member.typeParameters![0].constraint!);
-							for (const i of members) {
-								const overload = factory.createMethodDeclaration(
-									undefined,		// modifiers
-									undefined,		// asteriskToken
-									member.name,	// name
-									undefined,		// questionToken
-									undefined,		// typeParameters
-									createParameters(member, param, i),	// parameters
-									createReturn(member, i),	//type
-									undefined		//body
-								);
-								newMembers.push(fixTypes(overload));
-							}
-							continue;
-						}
-						// Add the original member to the class
-						print(`fixing ${member.name?.getText()}`);
-						(member as any).parent = node;
-						newMembers.push(fixTypes(member));
-					}
-
-					// Update the class declaration with the new members
-					node = factory.updateClassDeclaration(
-						node,
-						node.modifiers,
-						node.name,
-						node.typeParameters,
-						node.heritageClauses,
-						newMembers
-					);
-					--depth;
-					return node;
-				}
-				if (ts.isMethodDeclaration(node)) {
-					print(`fixing ${node.name?.getText()}`);
-					return fixTypes(node);
-				}
-
-				if (ts.isPropertyDeclaration(node))
-					return fixTypes(node);
-
-				if (ts.isFunctionDeclaration(node))
-					return fixTypes(node);
-*/
 				++depth;
 				node = ts.visitEachChild(node, visit, context);
 				--depth;
 				return node;
-				//return ts.visitEachChild(node, visit, context);
 			}
 			
 			//SourceFile:
+			print(`SourceFile ${sourceFile.fileName}`);
+			++depth;
+
 			const newStatements: ts.Statement[] = [];
 
 			for (const statement of sourceFile.statements) {
@@ -373,32 +368,28 @@ function resolveTypesTransformer(program: ts.Program): ts.TransformerFactory<ts.
 					for (const member of statement.members) {
 						const param = ts.isMethodDeclaration(member) && hasSingleTypeParameter(member);
 						if (param) {
-							console.log(`Expanding generic method "${member.name.getText()}"`);
 							const members	= getMembersOfConstraintType(member.typeParameters![0].constraint!);
-							for (const i of members) {
-								const overload = factory.createMethodDeclaration(
-									undefined,		// modifiers
-									undefined,		// asteriskToken
-									member.name,	// name
-									undefined,		// questionToken
-									undefined,		// typeParameters
-									createParameters(member, param, i),	// parameters
-									createReturn(member, i),	//type
-									undefined		//body
-								);
-								newMembers.push(fixTypes(overload));
+							if (members.length) {
+								console.log(`Expanding generic method "${member.name.getText()}"`);
+								for (const i of members) {
+									const overload = factory.createMethodDeclaration(
+										undefined,		// modifiers
+										undefined,		// asteriskToken
+										member.name,	// name
+										undefined,		// questionToken
+										undefined,		// typeParameters
+										createParameters(member, param, i),	// parameters
+										createReturn(member, i),	//type
+										undefined		//body
+									);
+									newMembers.push(fixTypes(overload));
+								}
+								continue;
 							}
-							continue;
 						}
 						// Add the original member to the class
-						print(`fixing ${member.name?.getText()}`);
-						//(member as any).parent = statement;
 						newMembers.push(fixTypes(member));
 					}
-
-					//for (const i of newMembers) {
-					//	fixTypes(i);
-					//}
 
 					// Update the class declaration with the new members
 					newStatements.push(factory.updateClassDeclaration(
@@ -422,7 +413,7 @@ function resolveTypesTransformer(program: ts.Program): ts.TransformerFactory<ts.
 								sourceFile.fileName,
 								program.getCompilerOptions(),
 								{
-									fileExists: ts.sys.fileExists, // File system methods
+									fileExists: ts.sys.fileExists,
 									readFile: ts.sys.readFile,
 								},
 								moduleResolutionCache
@@ -436,24 +427,31 @@ function resolveTypesTransformer(program: ts.Program): ts.TransformerFactory<ts.
 
 				} else if (ts.isFunctionDeclaration(statement)) {
 					const param = hasSingleTypeParameter(statement);
+
+					//const type	= typeChecker.getTypeAtLocation(statement);
+					//const node 	= typeChecker.typeToTypeNode(type, statement, typeformatflags);
+
+
 					if (param) {
-						console.log(`Expanding generic function "${statement.name?.escapedText}"`);
 						const members		= getMembersOfConstraintType(statement.typeParameters![0].constraint!);
-						for (const i of members) {
-							const overload 	= factory.createFunctionDeclaration(
-								[factory.createModifier(ts.SyntaxKind.ExportKeyword)], // Add export
-								undefined,		//asteriskToken
-								statement.name,	//name
-								undefined,		//type params
-								createParameters(statement, param, i),
-								createReturn(statement, i),	//type
-								undefined		//body
-							);
-							newStatements.push(fixTypes(overload));
+						if (members.length) {
+							console.log(`Expanding generic function "${statement.name?.escapedText}"`);
+							for (const i of members) {
+								const overload 	= factory.createFunctionDeclaration(
+									[factory.createModifier(ts.SyntaxKind.ExportKeyword)], // Add export
+									undefined,		//asteriskToken
+									statement.name,	//name
+									undefined,		//type params
+									createParameters(statement, param, i),
+									createReturn(statement, i),	//type
+									undefined		//body
+								);
+								newStatements.push(fixTypes(overload));
+							}
+							continue;
 						}
-					} else {
-						newStatements.push(fixTypes(statement));
 					}
+					newStatements.push(fixTypes(statement));
 
 				} else if (ts.isTypeAliasDeclaration(statement)) {
 					//print("++TYPEDEF");

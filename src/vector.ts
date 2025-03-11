@@ -1,11 +1,3 @@
-
-export interface color {
-	r: number,
-	g: number,
-	b: number,
-	a: number,
-}
-
 interface vec2<T> {
 	x:	T,
 	y:	T,
@@ -15,6 +7,22 @@ interface vec3<T> {
 	y:	T,
 	z:	T,
 }
+
+interface vec3s<T, T2, T3> extends vec3<T> {
+	xy:	T2;
+	xz:	T2;
+	yx:	T2;
+	yz:	T2;
+	zx:	T2;
+	zy:	T2;
+	xyz: T3;
+	xzy: T3;
+	yxz: T3;
+	yzx: T3;
+	zxy: T3;
+	zyx: T3;
+}
+
 interface vec4<T> {
 	x:	T,
 	y:	T,
@@ -22,37 +30,51 @@ interface vec4<T> {
 	w:	T,
 }
 
+function add_swizzles3<T, T2, T3>(obj: vec3s<T, T2, T3>, make2: (x: T, y: T) => T2, make3: (x: T, y: T, z: T) => T3) {
+    Object.defineProperty(obj, "xy", { get() { return make2(this.x, this.y); } });
+    Object.defineProperty(obj, "xz", { get() { return make2(this.x, this.z); } });
+    Object.defineProperty(obj, "yx", { get() { return make2(this.y, this.x); } });
+    Object.defineProperty(obj, "yz", { get() { return make2(this.y, this.z); } });
+    Object.defineProperty(obj, "zx", { get() { return make2(this.z, this.x); } });
+    Object.defineProperty(obj, "zy", { get() { return make2(this.z, this.y); } });
+
+    Object.defineProperty(obj, "xyz", { get() { return make3(this.x, this.y, this.z); } });
+    Object.defineProperty(obj, "xzy", { get() { return make3(this.x, this.z, this.y); } });
+    Object.defineProperty(obj, "yxz", { get() { return make3(this.y, this.x, this.z); } });
+    Object.defineProperty(obj, "yzx", { get() { return make3(this.y, this.z, this.x); } });
+    Object.defineProperty(obj, "zxy", { get() { return make3(this.z, this.x, this.y); } });
+    Object.defineProperty(obj, "zyx", { get() { return make3(this.z, this.y, this.x); } });
+}
+
 function hasz<T>(a: vec3<T>|vec2<T>): a is vec3<T> { return 'z' in a; }
 function hasw<T>(a: vec4<T>|vec3<T>): a is vec4<T> { return 'w' in a; }
 
-abstract class ops<C extends ops<C>> {
-	abstract neg(): 			C;
-	abstract mul(b: number): 	C;
-	abstract add(b: C): 		C;
-	abstract sub(b: C): 		C;
-	abstract min(b: C): 		C;
-	abstract max(b: C): 		C;
-	abstract equal(b: C): 		boolean;
-	abstract dot(b: C): 		number;
-	abstract perp(): 			C;
-
-	mid(b: C) 		{ return this.add(b).mul(0.5); }
-	lensq()			{ return this.dot(this as unknown as C);}
-	len()			{ return Math.sqrt(this.lensq());}
+interface ops<C extends ops<C>> {
+	neg(): 			C;
+	mul(b: number): C;
+	vmul(b: C):		C;
+	add(b: C): 		C;
+	sub(b: C): 		C;
+	min(b: C): 		C;
+	max(b: C): 		C;
+	equal(b: C): 	boolean;
+	dot(b: C): 		number;
+	perp(): 		C;
+	lensq():		number;
+	len():			number;
 }
 
-//export function lensq<C extends ops<C>>(a: C)					{ return a.dot(a);}
-//export function len<C extends ops<C>>(a: C)						{ return Math.sqrt(lensq(a));}
+export function mid<C extends ops<C>>(a: C, b: C) 	{ return a.add(b).mul(0.5); }
+export function lensq<C extends ops<C>>(a: C)		{ return a.dot(a);}
+export function len<C extends ops<C>>(a: C)			{ return Math.sqrt(lensq(a));}
+
 export function normalise<C extends ops<C>>(a: C)				{ return a.mul(1 / a.len());}
 export function project<C extends ops<C>>(a: C, b: C)			{ return b.mul(a.dot(b) / b.lensq()); }
 export function reflect<C extends ops<C>>(a: C, b: C)			{ return project(a, b).mul(2).sub(a); }
 export function lerp<C extends ops<C>>(a: C, b: C, t: number)	{ return a.add(b.sub(a).mul(t)); }
 
 class extent<C extends ops<C>> {
-	constructor(
-		public min:C,	// = C.Infinity,
-		public max:C	// = C.Infinity.neg(),
-	) {}
+	constructor(public min:C, public max:C) {}
 	add(p: C) {
 		this.min = this.min.min(p);
 		this.max = this.max.max(p);
@@ -88,31 +110,23 @@ export class extent1 {
 // 2D
 //-----------------------------------------------------------------------------
 
-export class Float2 extends ops<Float2> {
-	constructor(public x: number, public y: number) { super(); }
-	neg()				{ return float2(-this.x, -this.y);}
-	mul(b: number)		{ return float2(this.x * b, this.y * b);}
-	add(b: Float2)		{ return float2(this.x + b.x, this.y + b.y);}
-	sub(b: Float2)		{ return float2(this.x - b.x, this.y - b.y);}
-	min(b: Float2)		{ return float2(Math.min(this.x, b.x), Math.min(this.y, b.y));}
-	max(b: Float2)		{ return float2(Math.max(this.x, b.x), Math.max(this.y, b.y));}
-	equal(b: Float2)	{ return this.x === b.x && this.y === b.y;}
-	dot(b: Float2)		{ return this.x * b.x + this.y * b.y;}
-	cross(b: Float2)	{ return this.x * b.y - this.y * b.x;}
-	perp()				{ return float2(-this.y, this.x); }
-};
+export interface float2 extends vec2<number>, ops<float2> {
+	cross(b: float2): number;
+}
 
 export const float2 = Object.assign(
-    function (this: any, x: number, y: number): Float2 {
-        return new Float2(x, y);
+    function (this: float2, x: number, y: number) {
+		if (!this)
+			return new float2(x, y);
+		this.x = x;
+		this.y = y;
 	} as {
 		(x: number, y: number): float2;		// Callable signature
 		new (x: number, y: number): float2;	// Constructor signature
     },
-    {
-		C:	Float2,
+    {// statics
         zero() { return float2(0, 0); },
-		translate(z: float2): float2x3 {
+		translate(z: float2) {
 			return float2x3(float2(1, 0), float2(0,1), z);
 		},
 		scale(s: {x: number, y: number}|number) {
@@ -128,7 +142,31 @@ export const float2 = Object.assign(
     }
 );
 
-export type float2		= Float2;
+Object.assign(float2.prototype, {
+	neg(this: float2)				{ return float2(-this.x, -this.y);},
+	mul(this: float2, b: number)	{ return float2(this.x * b, this.y * b);},
+	vmul(this: float2, b: float2)	{ return float2(this.x * b.x, this.y * b.y);},
+	add(this: float2, b: float2)	{ return float2(this.x + b.x, this.y + b.y);},
+	sub(this: float2, b: float2)	{ return float2(this.x - b.x, this.y - b.y);},
+	min(this: float2, b: float2)	{ return float2(Math.min(this.x, b.x), Math.min(this.y, b.y));},
+	max(this: float2, b: float2)	{ return float2(Math.max(this.x, b.x), Math.max(this.y, b.y));},
+	equal(this: float2, b: float2)	{ return this.x === b.x && this.y === b.y;},
+	dot(this: float2, b: float2)	{ return this.x * b.x + this.y * b.y;},
+	perp(this: float2)				{ return float2(-this.y, this.x); },
+	lensq(this: float2)				{ return this.dot(this);},
+	len(this: float2)				{ return Math.sqrt(this.lensq());},
+	cross(this: float2, b: float2)	{ return this.x * b.y - this.y * b.x;},
+});
+
+export class extent2 extends extent<float2> {
+	constructor(
+		min	= float2(Infinity, Infinity),
+		max = float2(-Infinity, -Infinity),
+	) {
+		super(min, max);
+	}
+}
+
 export type float2x2	= vec2<float2>;
 export type float2x3	= vec3<float2>;
 export type float2x4	= vec4<float2>;
@@ -182,14 +220,7 @@ export function max_circle_point(m: float2x2) {
 	}
 	return float2(1, 0);
 }
-export class extent2 extends extent<float2> {
-	constructor(
-		min	= float2(Infinity, Infinity),
-		max = float2(-Infinity, -Infinity),
-	) {
-		super(min, max);
-	}
-}
+
 //-----------------------------------------------------------------------------
 // 2D geometry
 //-----------------------------------------------------------------------------
@@ -199,7 +230,7 @@ export interface circle {
 	radius:	number;
 }
 
-export function circle(centre: float2, radius: number) {
+export function circle(centre: float2, radius: number): circle {
 	return {centre, radius};
 }
 
@@ -211,36 +242,69 @@ export function triangle(a: float2, b: float2, c: float2) {
 // 3D
 //-----------------------------------------------------------------------------
 
-class Float3 extends ops<Float3> {
-	constructor(public x: number, public y: number, public z: number) { super(); }
-	neg()				{ return float3(-this.x, -this.y, -this.z);}
-	mul(b: number)		{ return float3(this.x * b, this.y * b, this.z * b);}
-	add(b: Float3)		{ return float3(this.x + b.x, this.y + b.y, this.z + b.z);}
-	sub(b: Float3)		{ return float3(this.x - b.x, this.y - b.y, this.z - b.z);}
-	min(b: Float3)		{ return float3(Math.min(this.x, b.x), Math.min(this.y, b.y), Math.min(this.z, b.z));}
-	max(b: Float3)		{ return float3(Math.max(this.x, b.x), Math.max(this.y, b.y), Math.max(this.z, b.z));}
-	equal(b: Float3)	{ return this.x === b.x && this.y === b.y && this.z === b.z;}
-	dot(b: Float3)		{ return this.x * b.x + this.y * b.y + this.z * b.z;}
-	cross(b: Float3)	{ return this.x * b.y - this.y * b.x;}
-	perp()				{ return this; }//TBD
+export interface float3 extends vec3s<number, float2, float3>, ops<float3> {
+	cross(b: float3): float3;
 }
 
 export const float3 = Object.assign(
-    (x: number, y: number, z: number) => new Float3(x, y, z),
+    function (this: float3, x: number, y: number, z: number) {
+		if (!this)
+			return new float3(x,y,z);
+		this.x = x;
+		this.y = y;
+		this.z = z;
+	} as {
+		(x: number, y: number, z: number): float3;		// Callable signature
+		new (x: number, y: number, z: number): float3;	// Constructor signature
+    },
     {
-        zero() { return float3(0, 0, 0); }
+        zero() { return float3(0, 0, 0); },
+		translate(w: float3) {
+			return float3x4(float3(1, 0, 0), float3(0,1,0), float3(0,0,1), w);
+		},
+		scale(s: vec3<number> | number) {
+			if (typeof s === 'number')
+				s = float3(s, s, s);
+			return float3x3(float3(s.x, 0, 0), float3(0, s.y, 0), float3(0, 0, s.z));
+		},
     }
 );
 
-export type float3 		= Float3;
+Object.assign(float3.prototype, {
+	neg(this: float3)				{ return float3(-this.x, -this.y, -this.z);},
+	mul(this: float3, b: number)	{ return float3(this.x * b, this.y * b, this.z * b);},
+	vmul(this: float3, b: float3)	{ return float3(this.x * b.x, this.y * b.y, this.z * b.z);},
+	add(this: float3, b: float3)	{ return float3(this.x + b.x, this.y + b.y, this.z + b.z);},
+	sub(this: float3, b: float3)	{ return float3(this.x - b.x, this.y - b.y, this.z - b.z);},
+	min(this: float3, b: float3)	{ return float3(Math.min(this.x, b.x), Math.min(this.y, b.y), Math.min(this.z, b.z));},
+	max(this: float3, b: float3)	{ return float3(Math.max(this.x, b.x), Math.max(this.y, b.y), Math.max(this.z, b.z));},
+	equal(this: float3, b: float3)	{ return this.x === b.x && this.y === b.y && this.z === b.z;},
+	dot(this: float3, b: float3)	{ return this.x * b.x + this.y * b.y + this.z * b.z;},
+	perp(this: float3)				{ return this; },//TBD
+	lensq(this: float3)				{ return this.dot(this);},
+	len(this: float3)				{ return Math.sqrt(this.lensq());},
+	cross(this: float3, b: float3)	{ return (b.vmul(this.zxy).sub(this.vmul(b.zxy))).zxy; }
+});
+//add_swizzles3(float3.prototype, (x, y) => ({ x, y }), (x, y, z) => ({ x, y, z }));
+add_swizzles3(float3.prototype, float2, float3);
+
+export class extent3 extends extent<float3> {
+	constructor(
+		min	= float3(Infinity, Infinity, Infinity),
+		max = float3(-Infinity, -Infinity, -Infinity),
+	) {
+		super(min, max);
+	}
+}
+
 export type float3x3	= vec3<float3>;
 export type float3x4	= vec4<float3>;
 
-export function float3x3(x: float3, y: float3, z: float3)	{ return {x, y, z}; }
-export function float3x4(x: float3, y: float3, z: float3, w: float3)	{ return {x, y, z, w}; }
+export function float3x3(x: float3, y: float3, z: float3): float3x3	{ return {x, y, z}; }
+export function float3x4(x: float3, y: float3, z: float3, w: float3): float3x4	{ return {x, y, z, w}; }
 export const identity3x4	= float3x4(float3(1, 0, 0), float3(0, 1, 0), float3(0, 0, 1), float3(0, 0, 0));
 
-export function mul3x3(m: float3x3, v: float3)		{ return m.x.mul(v.x).add(m.y.mul(v.y)).add(m.z.mul(v.z)); }
+export function mul3x3(m: float3x3, v: float3)				{ return m.x.mul(v.x).add(m.y.mul(v.y)).add(m.z.mul(v.z)); }
 export function mul3x4(m: float3x4|float3x3, v: float3)		{ const t = mul3x3(m, v); return hasw(m) ? t.add(m.w) : t; }
 
 export function matmul3(a: float3x4, b: float3x3): float3x4;
@@ -256,37 +320,37 @@ export function matmul3(a: float3x4|float3x3, b: float3x4|float3x3): float3x4|fl
 	};
 }
 
-export function translate3(w: float3) {
-	return float3x4(float3(1, 0, 0), float3(0, 1, 0), float3(0, 0, 1),w);
+export function det3x3(m: float3x3)	{
+	return m.x.dot(m.y.cross(m.z));
 }
 
-export function scale3(s: float3|number) {
-	if (typeof s === 'number')
-		s = float3(s, s, s);
-	return float3x3(float3(s.x, 0, 0), float3(0, s.y, 0), float3(0, s.z, 0));
-}
-/* TBD
-export function rotate3(t: number) {
-}
-
-export function det3x3(m: float3x4)	{
+export function transpose3x3(m: float3x3)	{
+	return float3x3(
+		float3(m.x.x, m.y.x, m.z.x),
+		float3(m.x.y, m.y.y, m.z.y),
+		float3(m.x.z, m.y.z, m.z.z)
+	);
 }
 
 export function inverse3x3(m: float3x3)	{
+	const cofactors = float3x3(
+		m.y.cross(m.z),
+		m.z.cross(m.x),
+		m.x.cross(m.y)
+	);
+	const rdet = 1 / m.x.dot(cofactors.x);
+	return transpose3x3(float3x3(
+		cofactors.x.mul(rdet),
+		cofactors.y.mul(rdet),
+		cofactors.z.mul(rdet)
+	));
 }
 
 export function inverse3x4(m: float3x4)	{
+	const i = inverse3x3(m);
+	return float3x4(i.x, i.y, i.z, mul3x3(i, m.w));
 }
-*/
 
-export class extent3 extends extent<float3> {
-	constructor(
-		min	= float3(Infinity, Infinity, Infinity),
-		max = float3(-Infinity, -Infinity, -Infinity),
-	) {
-		super(min, max);
-	}
-}
 
 //-----------------------------------------------------------------------------
 // 3d geometry
@@ -297,25 +361,42 @@ export class extent3 extends extent<float3> {
 // 4D
 //-----------------------------------------------------------------------------
 
-class Float4 extends ops<Float4> {
-	constructor(public x: number, public y: number, public z: number, public w: number) { super(); }
-	neg()				{ return float4(-this.x, -this.y, -this.z, -this.w);}
-	mul(b: number)		{ return float4(this.x * b, this.y * b, this.z * b, this.w * b);}
-	add(b: Float4)		{ return float4(this.x + b.x, this.y + b.y, this.z + b.z, this.w + b.w);}
-	sub(b: Float4)		{ return float4(this.x - b.x, this.y - b.y, this.z - b.z, this.w - b.w);}
-	min(b: Float4)		{ return float4(Math.min(this.x, b.x), Math.min(this.y, b.y), Math.min(this.z, b.w), Math.min(this.z, b.w));}
-	max(b: Float4)		{ return float4(Math.max(this.x, b.x), Math.max(this.y, b.y), Math.max(this.z, b.w), Math.max(this.z, b.w));}
-	equal(b: Float4)	{ return this.x === b.x && this.y === b.y && this.z === b.z && this.w === b.w;}
-	dot(b: Float4)		{ return this.x * b.x + this.y * b.y + this.z * b.z + this.w * b.w;}
-	cross(_b: Float4)	{ return this; }//TBD
-	perp()				{ return this; }//TBD
-}
+
+export interface float4 extends vec4<number>, ops<float4> {}
 
 export const float4 = Object.assign(
-    (x: number, y: number, z: number, w: number) => new Float4(x, y, z, w),
+    function (this: float4, x: number, y: number, z: number, w: number) {
+		this.x = x;
+		this.y = y;
+		this.z = z;
+		this.w = w;
+	} as {
+		(x: number, y: number, z: number, w: number): float4;		// Callable signature
+		new (x: number, y: number, z: number, w: number): float4;	// Constructor signature
+    },
     {
-        zero() { return float4(0, 0, 0, 9); }
+        zero() { return float4(0, 0, 0, 0); },
+		scale(s: vec4<number> |number) {
+			if (typeof s === 'number')
+				s = float4(s, s, s, s);
+			return float4x4(float4(s.x, 0, 0, 0), float4(0, s.y, 0, 0), float4(0, 0, s.z, 0), float4(0, 0, 0, s.w));
+		},
     }
 );
 
-export type float4		= Float4;
+Object.assign(float4.prototype, {
+	neg(this: float4)				{ return float4(-this.x, -this.y, -this.z, -this.w);},
+	mul(this: float4, b: number)	{ return float4(this.x * b, this.y * b, this.z * b, this.w * b);},
+	add(this: float4, b: float4)	{ return float4(this.x + b.x, this.y + b.y, this.z + b.z, this.w + b.w);},
+	sub(this: float4, b: float4)	{ return float4(this.x - b.x, this.y - b.y, this.z - b.z, this.w - b.w);},
+	min(this: float4, b: float4)	{ return float4(Math.min(this.x, b.x), Math.min(this.y, b.y), Math.min(this.z, b.z), Math.min(this.w, b.w));},
+	max(this: float4, b: float4)	{ return float4(Math.max(this.x, b.x), Math.max(this.y, b.y), Math.max(this.z, b.z), Math.max(this.w, b.w));},
+	equal(this: float4, b: float4)	{ return this.x === b.x && this.y === b.y && this.z === b.z && this.w === b.w;},
+	dot(this: float4, b: float4)	{ return this.x * b.x + this.y * b.y + this.z * b.z + this.w * b.w;},
+	perp(this: float4)				{ return this; },//TBD
+	lensq(this: float4)				{ return this.dot(this);},
+	len(this: float4)				{ return Math.sqrt(this.lensq());},
+});
+
+export type float4x4	= vec4<float4>;
+export function float4x4(x: float4, y: float4, z: float4, w: float4): float4x4	{ return {x, y, z, w}; }

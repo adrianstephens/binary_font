@@ -50,9 +50,8 @@ export class WOFF extends Font {
 	metadata?:	xml.Element;
 	priv?:		Uint8Array;
 
-	static async load(data: Uint8Array) {
+	static async load(file: binary.stream) {
 		const me 	= new WOFF;
-		const file	= new binary.stream(data);
 		const h		= binary.read(file, WOFFHeader);
 		console.log(h);
 
@@ -322,9 +321,8 @@ export class WOFF2 extends Font {
 	metadata?:	xml.Element;
 	priv?:		Uint8Array;
 
-	static async load(data: Uint8Array) {
+	static async load(file: binary.stream) {
 		const me 	= new WOFF2;
-		const file	= new binary.stream(data);
 		const h		= binary.read(file, WOFF2Header);
 		console.log(h);
 

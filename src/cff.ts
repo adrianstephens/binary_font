@@ -750,7 +750,7 @@ const PropNumber = (v: number[], _cff: CFF) => v[0];
 const PropString = (v: number[], cff: CFF) => cff.getString(v[0]);
 
 const propTypes = {
-	[prop.FontBBox]:			(v: number[]) => new extent2,//new extent2(float2(v[0], v[1]), float2(v[2], v[3])),
+	[prop.FontBBox]:			(v: number[]) => new extent2(float2(v[0], v[1]), float2(v[2], v[3])),
 	[prop.Private]:				(v: number[], cff: CFF, buffer: Uint8Array) => new PrivateDictionary(cff, buffer.subarray(v[1]), v[0]),
 	[prop.version]:				PropString,
 	[prop.Notice]:				PropString,
@@ -768,7 +768,7 @@ const propTypes = {
 	[prop.XUID]:				PropArray,
 	[prop.charset]:				PropNumber,//resolved later(v: number[], cff: CFF, buffer: Uint8Array) => new Charset(v[0], buffer, cff.numchr),
 	[prop.Encoding]:			PropNumber,
-	[prop.CharStrings]:			(v: number[], cff: CFF, buffer: Uint8Array) => binary.read(new binary.stream(buffer.subarray(v[0])), as<Ops[]>(index)),
+	[prop.CharStrings]:			(v: number[], cff: CFF, buffer: Uint8Array) => binary.read(new binary.stream(buffer.subarray(v[0])), index),//as<Ops[]>(index)),
 //	[prop.Private]:				(v: number[], cff: CFF, buffer: Uint8Array) => new PrivateDictionary(cff, buffer.subarray(v[1]), v[0]),
 	[prop.Subrs]:				(v: number[], cff: CFF, buffer: Uint8Array) => binary.read(new binary.stream(buffer.subarray(v[0])), index),
 	[prop.defaultWidthX]:		PropNumber,
@@ -1148,11 +1148,11 @@ abstract class FDSelector {
 
 const FDSelect = {
 	format:	u8,
-	data: binary.Switch(obj => obj.format, {
-		0: class extends binary.Class(binary.RemainingArrayType(u8)) {
+	data: as<FDSelector>(binary.Switch(obj => obj.format, {
+		0: class X0 extends binary.Class(binary.RemainingArrayType(u8)) {
 			get(i: number) { return this[i]; }
 		},
-		3: class extends binary.Class({
+		3: class X3 extends binary.Class({
 			ranges: binary.ArrayType(u16, {first: u16, fd: u8}),
 			sentinel: u16
 		}) {
@@ -1166,7 +1166,7 @@ const FDSelect = {
 				return this.ranges[j - 1].fd;
 			}
 		}
-	})
+	}))
 };
 
 export class CFF extends binary.Class({
@@ -1176,11 +1176,13 @@ export class CFF extends binary.Class({
 	strings:	binary.as(index, blocks => blocks.map(i => binary.utils.decodeText(i))),
 	gsubrs:		index,
 }) {
+//	static get(file: binary._stream) { return new this(file); }
+	
 	pub_dict:	Dictionary;
 	nominalWidth	= private_defaults[prop.nominalWidthX][0];
 	charset?:	Charset;
 
-	constructor(s: binary.stream) {
+	constructor(s: binary._stream) {
 		const buffer	= s.remainder();
 		super(s);
 
@@ -1198,7 +1200,7 @@ export class CFF extends binary.Class({
 	getPrivate(id: number) {
 		const fdselect = this.pub_dict.lookup(prop.FDSelect);
 		return fdselect
-			? this.pub_dict.lookup(prop.FDArray)![(fdselect.data as unknown as FDSelector).get(id)].lookup(prop.Private)
+			? this.pub_dict.lookup(prop.FDArray)![fdselect.data.get(id)].lookup(prop.Private)
 			: this.pub_dict.lookup(prop.Private);
 	}
 
@@ -1214,8 +1216,8 @@ export class CFF extends binary.Class({
 
 			const bb = this.pub_dict.lookup(prop.FontBBox);
 			return {
-				min: float2.zero(),//bb.min,
-				max: float2.zero(),//bb.max,
+				min: bb.min,
+				max: bb.max,
 				curve: vm.verts,
 			};
 		}

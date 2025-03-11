@@ -6,8 +6,15 @@ import {
 	extent2,
 	matmul2,
 	max_circle_point,
-	color,
+	mid,
 } from './vector';
+
+export interface color {
+	r: number,
+	g: number,
+	b: number,
+	a: number,
+}
 
 //-----------------------------------------------------------------------------
 //	curves
@@ -123,7 +130,7 @@ class ArcParams {
 		let		m	= this.matrix();
 		const	d1	= mul2x2(inverse2x2(m), p1.sub(p0).mul(0.5));
 		const	d2	= d1.lensq();
-		const	middle	= p0.mid(p1);
+		const	middle	= mid(p0, p1);
 	
 		if (d2 > 1) {
 			m = matmul2(float2.scale(Math.sqrt(d2)), m);
@@ -250,7 +257,7 @@ export function parseCurve(curves: curveVertex[]): CurveSource {
 		
 					case CURVE.OFF_BEZ2:
 						if (prev_flags > 1)
-							on_curve(sink, prev.mid(pt));
+							on_curve(sink, mid(prev, pt));
 						break;
 		
 					case CURVE.OFF_BEZ3:
@@ -259,8 +266,8 @@ export function parseCurve(curves: curveVertex[]): CurveSource {
 							[pt, prev] = [prev, pt];
 		
 						} else if (prev_flags > 2 && prev2_flags > 1) {
-							on_curve(sink, prev.mid(pt));
-							prev	= prev.mid(pt);
+							on_curve(sink, mid(prev, pt));
+							prev	= mid(prev, pt);
 							flags	= CURVE.OFF_BEZ2;
 						}
 						break;
