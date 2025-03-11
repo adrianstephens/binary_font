@@ -1,26 +1,22 @@
 
-import { readFileSync, writeFileSync} from 'fs';
-import {fontLoad} from '../dist/load';
-import {Font} from '../dist/font';
+import * as fs from 'fs/promises';
+import * as fontbin from '../dist';
 
 (async() => {
 	// Load a font file
-	const fontData = readFileSync('/System/Library/Fonts/Supplemental/Brush Script.ttf');
+	const font = await fontbin.loadFile('/System/Library/Fonts/Supplemental/Brush Script.ttf');
 
-	// Parse the font
-	const font = await fontLoad(fontData);
-	if (font && font instanceof Font) {
+	if (font && font instanceof fontbin.Font) {
 
 		// Access font properties
 		console.log(font.numGlyphs());
 
 		const mapping = font.getGlyphMapping();
 		if (mapping) {
-			const id = mapping['A'.charCodeAt(0)];
+			const id = mapping['f'.charCodeAt(0)];
 			const svg = font.getGlyphSVG(id);
-			if (svg) {
-				writeFileSync('./glyph.svg', svg.toString());
-			}
+			if (svg)
+				await fs.writeFile('./glyph.svg', svg.toString());
 		}
 	}
 })();

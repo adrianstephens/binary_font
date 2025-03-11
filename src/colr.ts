@@ -26,7 +26,7 @@ export const CPAL = {
 	numPaletteEntries:	u16,		//	Number of palette entries in each palette.
 	numPalettes:		u16,		//	Number of palettes in the table.
 	numColorRecords:	u16,		//	Total number of color records, combined for all palettes.
-	colors:	binary.OffsetType(u32, binary.ArrayType(obj=>obj.numColorRecords, {
+	colors:	binary.OffsetType(u32, binary.ArrayType(s => s.obj.numColorRecords, {
 		b: u8,
 		g: u8,
 		r: u8,
@@ -34,7 +34,7 @@ export const CPAL = {
 	})),
 	colorRecordIndices:	binary.RemainingArrayType(u16),	//	Index of each palette's first color record in the combined color record array.
 
-	v1:	binary.Optional(obj => obj.version >= 1, {
+	v1:	binary.Optional(s => s.obj.version >= 1, {
 		types:				binary.OffsetType(u32, binary.asEnum(u16, {
 			USABLE_WITH_LIGHT_BACKGROUND:	0x0001,
 			USABLE_WITH_DARK_BACKGROUND:	0x0002
@@ -398,18 +398,18 @@ function ReadPaint(file: binary._stream) : Paint {
 export class COLR extends binary.Class({
 	version:				u16,
 	numBaseGlyphRecords:	u16,
-	baseGlyphs:				binary.OffsetType(u32, binary.ArrayType(obj=>obj.numBaseGlyphRecords, {
+	baseGlyphs:				binary.OffsetType(u32, binary.ArrayType(s => s.obj.numBaseGlyphRecords, {
 		glyphID:			u16,	// Glyph ID of the base glyph
 		firstLayerIndex:	u16,	// Index (base 0) into the layerRecords array
 		numLayers:			u16,	// Number of color layers associated with this glyph
 	})),
-	layers:					binary.OffsetType(u32, binary.ArrayType(obj=>obj.numLayerRecords, {
+	layers:					binary.OffsetType(u32, binary.ArrayType(s => s.obj.numLayerRecords, {
 		glyphID:			u16,	// Glyph ID of the glyph used for a given layer
 		paletteIndex:		u16,	// Index (base 0) for a palette entry in the CPAL table
 	})),
 	numLayerRecords:		u16,
 
-	v1:	binary.Optional(obj => obj.version === 1, {
+	v1:	binary.Optional(s => s.obj.version === 1, {
 		baseGlyphs:		binary.OffsetType(u32, binary.ArrayType(u32, {
 			glyphID:	u16,		// Glyph ID of the base glyph
 			paint:		binary.OffsetType(u32, PaintBase),

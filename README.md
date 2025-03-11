@@ -11,7 +11,7 @@ Non bitmap glyphs can be converted to SVGs.
 Here's an example of how to use the binary_font package to read a font file and output an svg for the glyph representing 'A':
 ```typescript
 import { readFileSync, writeFileSync } from 'fs';
-import { fontLoad, Font } from '@isopodlabs/binary_font';
+import { load, Font } from '@isopodlabs/binary_font';
 
 // Load a font file
 const fontData = readFileSync('path/to/font.ttf');
@@ -43,7 +43,7 @@ The binary_font package supports reading and parsing the following font formats:
 - Web Open Font Format (WOFF)
 - Web Open Font Format 2 (WOFF2)
 
-It has support for the following data blocks:
+The following data blocks are supported:
 
 - OS/2
 - head
@@ -65,24 +65,46 @@ It has support for the following data blocks:
 ## API
 
 ### Interfaces
-```
+```typescript
+// a 2D vector
+interface float2 {
+    x: number;
+    y: number;
+};
+
+// a vertex of a curve. An array of these defines one or multiple curves
+class curveVertex extends float2 {
+	static readonly ON_BEGIN	= 0;    // this vertex starts a new curve
+	static readonly ON_CURVE	= 1;    // this vertex is on the curve
+	static readonly OFF_BEZ2	= 2;    // this vertex is the control point of a quadratic bezier
+	static readonly OFF_BEZ3	= 3;    // this vertex is a control point of a cubic bezier
+	static readonly OFF_ARC		= 8;
+	static readonly ON_ARC		= 9;
+	flags: number;
+}
+
+// reference to another glyph with a transformation
+interface glyphRef {
+	glyph: number;
+	mat: {x: float2, y: float2, z: float2};
+}
+
+// a single glyph in a font
 interface Glyph {
     min: float2;
     max: float2;
-    curve?: curveVertex[];
-    refs?: glyphRef[];
-    instructions?: Uint8Array;
+    curve?: curveVertex[];      // a curve or curves
+    refs?: glyphRef[];          // references to other glyphs
+    instructions?: Uint8Array;  // additional instructions used to define a glyph
 }
-```
-A single glyph in the font.
-```
+
+// a single glyph in a bitmap font
 interface GlyphImage {
-    originOffset: float2;
-    graphicType: string;
+    originOffset: float2;       // position of the left edge of the bitmap graphic in relation to the glyph design space origin
+    graphicType: string;        // one of 'jpg ', 'png ', or 'tiff' describing the image format in the data
     data: Uint8Array;
 }
 ```
-A single glyph in a bitmap font.
 
 ### Font
 The Font class provides methods to access font properties and glyph data.
@@ -101,7 +123,7 @@ The Font class provides methods to access font properties and glyph data.
     Returns the glyph images for the specified pixels per em (ppem).
 - `getGlyphImage(id: number, ppem: number): GlyphImage | undefined`
 
-    Returns the glyph images for the specified pixels per em (ppem).
+    Returns the glyph image for the specified glyph ID at the specified pixels per em (ppem).
 - `getGlyphCOLR(id: number): Layer[] | undefined`
 
     Returns the COLR layers for the specified glyph ID.
@@ -124,9 +146,10 @@ The FontGroup holds an array of Fonts read from, say, a TTC file
     The array of fonts.
 
 ### Functions
-- `load(data: Uint8Array): Promise<Font | FontGroup | undefined>`
+- `load(data: Uint8Array): Font | FontGroup | Promise<Font> | undefined`
 
-    loads the font data from the given data array.
+    Loads the font data from the given data array.
+    The WOFF and WOFF2 formats return a `Promise`; other formats are synchronous.
 
 ## License
 

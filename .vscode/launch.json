@@ -10,7 +10,8 @@
             "name": "Test vectors",
             "runtimeExecutable": "ts-node",
             "cwd": "${workspaceFolder}",
-            "args": ["tests/testvec.ts"]
+            "args": ["tests/testvec.ts"],
+            "preLaunchTask": "npm: build"
         },
         {
             "type": "node",
@@ -18,11 +19,12 @@
             "name": "Test fonts",
             "runtimeExecutable": "ts-node",
             "cwd": "${workspaceFolder}",
-            "args": ["tests/testfont.ts"]
+            "args": ["tests/testfont.ts"],
+            "preLaunchTask": "npm: build"
         },
         {
             "type": "node-terminal",
-            "name": "Run Script: build",
+            "name": "Debug Transform",
             "request": "launch",
             "command": "npm run build",
             "cwd": "${workspaceFolder}"

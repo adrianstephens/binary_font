@@ -1,7 +1,7 @@
 import * as binary from '@isopodlabs/binary';
 import * as xml from '@isopodlabs/xml';
 import {float2, float2x3, identity2x3, extent2} from './vector';
-import {color, CURVE, curveVertex, curveExtent, parseCurve, FILL, EXTEND, Fill, Layer, parseSVGpath, makeSVGPath} from './curves';
+import {color, curveVertex, curveExtent, parseCurve, FILL, EXTEND, Fill, Layer, parseSVGpath, makeSVGPath} from './curves';
 
 import {CFF} from "./cff";
 import {CPAL, COLR} from "./colr";
@@ -189,17 +189,17 @@ const OS2 = {
 	win_ascent:			u16,
 	win_descent:		u16,
 	//v1
-	_: binary.If(obj=>obj.version >= 1, {
+	_: binary.If(s => s.obj.version >= 1, {
 		codepage_range:		binary.ArrayType(2, u32),
 	//v2,3,4
-		_: binary.If(obj=>obj.version >= 2, {
+		_: binary.If(s => s.obj.version >= 2, {
 			height:				s16,
 			cap_height:			s16,
 			default_char:		u16,
 			break_char:			u16,
 			max_context:		u16,
 	//v5
-			_: binary.If(obj=>obj.version >= 5, {
+			_: binary.If(s => s.obj.version >= 5, {
 				LowerOpticalPointSize:	u16,
 				UpperOpticalPointSize:	u16,
 			})
@@ -314,7 +314,7 @@ export function loadMetrics(data: Uint8Array, numGlyphs: number, numMetrics: num
 const maxp = {
 	version:				u32,	//0x00010000 (1.0)
 	numGlyphs:				u16,	//the number of glyphs in the font
-	_: binary.If(obj=>obj.version >= 0x00010000, {
+	_: binary.If(s => s.obj.version >= 0x00010000, {
 		maxPoints:				u16,	//points in non-compound glyph
 		maxContours:			u16,	//contours in non-compound glyph
 		maxComponentPoints:		u16,	//points in compound glyph
@@ -869,7 +869,7 @@ class GlyphReader extends binary.ReadClass({
 			const curve = flags.map(f => new curveVertex(
 				x += getDelta(!!(f & SIMPLE.SHORT_X), !!(f & SIMPLE.SAME_X)),
 				0,
-				f & SIMPLE.ON_CURVE ? CURVE.ON_CURVE : CURVE.OFF_BEZ2,
+				f & SIMPLE.ON_CURVE ? curveVertex.ON_CURVE : curveVertex.OFF_BEZ2,
 			));
 
 			x = 0;
@@ -887,7 +887,7 @@ class GlyphReader extends binary.ReadClass({
 						}
 					}
 				}
-				curve[j].flags = CURVE.ON_BEGIN;
+				curve[j].flags = curveVertex.ON_BEGIN;
 				j = j1;
 			}
 			this.curve	= curve;
@@ -980,7 +980,7 @@ function LookupList<T extends Record<number, Record<number, binary.Type>>>(table
 	return binary.ArrayType(u16, binary.OffsetType(u16, {
 		type:	u16,
 		flag:	as<LookupFlag>(u16),
-		table:	binary.Switch(obj => obj.type, Object.fromEntries(Object.entries(tables).map(([k, v]) => [k, binary.ArrayType(u16, binary.OffsetType(u16, binary.Switch(u16, v as A)))]))),
+		table:	binary.Switch(s => s.obj.type, Object.fromEntries(Object.entries(tables).map(([k, v]) => [k, binary.ArrayType(u16, binary.OffsetType(u16, binary.Switch(u16, v as A)))]))),
 		//u16	markFilteringSet;	//Index (base 0) into GDEF mark glyph sets structure. This field is only present if the USE_MARK_FILTERING_SET lookup flag is set.
 	}));
 }
@@ -1016,7 +1016,7 @@ const ScriptList = binary.ArrayType(u16, {
 
 const ClassDef = {
 	format:	u16,
-	data: binary.Switch(obj => obj.format, {
+	data: binary.Switch(s => s.obj.format, {
 		1: {
 			start:	u16,		//First glyph ID of the classValueArray
 			values:	binary.ArrayType(u16, u16),
@@ -1041,8 +1041,8 @@ const SequenceLookup = {
 const ClassSequenceRuleSet = binary.ArrayType(u16, binary.OffsetType(u16, {
 	glyphCount:			u16,	//Number of glyphs in the input glyph sequence
 	seqLookupCount:		u16,	//Number of SequenceLookupRecords
-	input:				binary.ArrayType(obj=>obj.glyphCount - 1, u16),	//Array of input glyph IDs'starting with the second glyph
-	seqLookup:			binary.ArrayType(obj=>obj.seqLookupCount, SequenceLookup),
+	input:				binary.ArrayType(s => s.obj.glyphCount - 1, u16),	//Array of input glyph IDs'starting with the second glyph
+	seqLookup:			binary.ArrayType(s => s.obj.seqLookupCount, SequenceLookup),
 }));
 
 const SequenceContext = {
@@ -1060,8 +1060,8 @@ const SequenceContext = {
 	3: {
 		glyphCount:	u16,
 		seqLookupCount:	u16,
-		coverages:	binary.ArrayType(obj=>obj.glyphCount, binary.OffsetType(u16, Coverage)),
-		seqLookup:	binary.ArrayType(obj=>obj.seqLookupCount, SequenceLookup),
+		coverages:	binary.ArrayType(s => s.obj.glyphCount, binary.OffsetType(u16, Coverage)),
+		seqLookup:	binary.ArrayType(s => s.obj.seqLookupCount, SequenceLookup),
 	}
 };
 
@@ -1180,7 +1180,7 @@ const GSUB = {
 			},
 		},
 	})),
-	v1:	binary.Optional(obj => obj.version >= 0x00010001 , {
+	v1:	binary.Optional(s => s.obj.version >= 0x00010001 , {
 		variations:	binary.OffsetType(u32, binary.Remainder),
 	}),
 };
@@ -1217,7 +1217,7 @@ interface ValueRecord extends binary.ReadType<ReturnType<typeof ValueRecord>> {}
 
 const Anchor = {
 	format: u16,
-	data: binary.Switch(obj=>obj.format, {
+	data: binary.Switch(s => s.obj.format, {
 		1: {//Anchor1
 			xCoordinate: 	s16,	//Horizontal value, in design units
 			yCoordinate: 	s16,	//Vertical value, in design units
@@ -1250,12 +1250,12 @@ const GPOS = {
 			1:{//SINGLE1
 				coverage:		binary.OffsetType(u16, Coverage),
 				valueFormat:	u16,		
-				valueRecord:	as<ValueRecord>(binary.FuncType(obj => ValueRecord(obj.valueFormat))),
+				valueRecord:	as<ValueRecord>(binary.FuncType(s => ValueRecord(s.obj.valueFormat))),
 			},
 			2:{//SINGLE2
 				coverage:		binary.OffsetType(u16, Coverage),
 				valueFormat:	u16,		
-				values:			binary.ArrayType(u16, as<ValueRecord>(binary.FuncType(obj => ValueRecord(obj.valueFormat)))),
+				values:			binary.ArrayType(u16, as<ValueRecord>(binary.FuncType(s => ValueRecord(s.obj.valueFormat)))),
 			},
 		},
 		2: {//	PAIR			Adjust position of a pair of glyphs
@@ -1277,7 +1277,7 @@ const GPOS = {
 				classDef2Offset:binary.OffsetType(u16, ClassDef),	//Offset to ClassDef table, from beginning of PairPos subtable ' for the second glyph of the pair.
 				class1Count:	u16,	//Number of classes in classDef1 table ' includes Class 0.
 				class2Count:	u16,	//Number of classes in classDef2 table ' includes Class 0.
-				records:		binary.ArrayType(obj => obj.class1Count * obj.class2Count, {
+				records:		binary.ArrayType(s => s.obj.class1Count * s.obj.class2Count, {
 					valueRecord1:	as<ValueRecord>(binary.FuncType(obj => ValueRecord(obj.obj.valueFormat1))),	//Positioning for first glyph ' empty if valueFormat1 = 0.
 					valueRecord2:	as<ValueRecord>(binary.FuncType(obj => ValueRecord(obj.obj.valueFormat2))),	//Positioning for second glyph ' empty if valueFormat2 = 0.
 				}),//	Array of Class1 records, ordered by classes in classDef1.
@@ -1330,7 +1330,7 @@ const GPOS = {
 			},
 		},
 	})),
-	variations:		binary.Optional(obj => obj.version >= 0x00010001,
+	variations:		binary.Optional(s => s.obj.version >= 0x00010001,
 		binary.OffsetType(u32, binary.Remainder)
 	),
 };
@@ -1343,10 +1343,10 @@ const DSIG = {
 	version:			u32,				// Version number of the DSIG table (0x00000001)
 	numSignatures:		u16,				// Number of signatures in the table
 	flags:				u16,				// Permission flags:bit 0: cannot be resigned,bits 1-7: Reserved (Set to 0)
-	signatureRecords:	binary.ArrayType(obj => obj.numSignatures, {
+	signatureRecords:	binary.ArrayType(s => s.obj.numSignatures, {
 		format:	u32,
 		length:	u32,
-		block:	binary.OffsetType(u32, binary.Switch(obj=>obj.format, {
+		block:	binary.OffsetType(u32, binary.Switch(s => s.obj.format, {
 			1:	{
 				reserved1:	u16,				// Reserved for future use; set to zero.
 				reserved2:	u16,				// Reserved for future use; set to zero.
@@ -1390,11 +1390,11 @@ const EOTHeader = {
 	padding4:		u16,
 	full_name:		EOTname,		//Full name string found in the name table of the font (name ID = 4)
 
-	v2_1:	binary.Optional(obj => obj.version >= 0x00020001, {
+	v2_1:	binary.Optional(s => s.obj.version >= 0x00020001, {
 		padding5:		u16,
 		root_string:	EOTname,
 
-		v2_2:	binary.Optional(obj => obj.version >= 0x00020002, {
+		v2_2:	binary.Optional(s => s.obj.version >= 0x00020002, {
 			root_string_checksum:	u32,
 			EUDC_codepage:	u32,
 			padding6:		u16,
@@ -1404,7 +1404,7 @@ const EOTHeader = {
 		}),
 	}),
 
-	data:	binary.Buffer(obj => obj.font_size),//font_size];	//compressed or XOR encrypted as indicated by the processing flags.
+	data:	binary.Buffer(s => s.obj.font_size),//font_size];	//compressed or XOR encrypted as indicated by the processing flags.
 };
 */
 //-----------------------------------------------------------------------------
@@ -1675,7 +1675,7 @@ const SFNTHeader = {
 	search_range:	u16,	// (Maximum power of 2 <= numTables) x 16.
 	entry_selector:	u16,	// Log2(maximum power of 2 <= numTables).
 	range_shift:	u16,	// NumTables x 16-searchRange.
-	tables:	binary.ArrayType(obj => obj.num_tables, {
+	tables:	binary.ArrayType(s => s.obj.num_tables, {
 		tag:			TAG,	// 4 -byte identifier.
 		checksum:		u32,	// CheckSum for this table.
 		offset:			u32,	// Offset from beginning of TrueType font file.

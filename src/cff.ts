@@ -1,6 +1,6 @@
 
 import * as binary from '@isopodlabs/binary';
-import {CURVE, curveVertex} from './curves';
+import {curveVertex} from './curves';
 import {float2, extent2} from './vector';
 
 function as<T>(type: binary.Type) {
@@ -39,12 +39,12 @@ class PS_VM {
 	hstems:		float2[] = [];
 	vstems?:	float2[];
 
-	MoveTo(p: float2) {	this.verts.push(new curveVertex(p.x, p.y, CURVE.ON_BEGIN)); }
-	LineTo(p: float2) {	this.verts.push(new curveVertex(p.x, p.y, CURVE.ON_CURVE)); }
+	MoveTo(p: float2) {	this.verts.push(new curveVertex(p.x, p.y, curveVertex.ON_BEGIN)); }
+	LineTo(p: float2) {	this.verts.push(new curveVertex(p.x, p.y, curveVertex.ON_CURVE)); }
 	BezierTo(p1: float2, p2: float2, p3: float2) {
-		this.verts.push(new curveVertex(p1.x, p1.y, CURVE.OFF_BEZ3));
-		this.verts.push(new curveVertex(p2.x, p2.y, CURVE.OFF_BEZ3));
-		this.verts.push(new curveVertex(p3.x, p3.y, CURVE.ON_CURVE));
+		this.verts.push(new curveVertex(p1.x, p1.y, curveVertex.OFF_BEZ3));
+		this.verts.push(new curveVertex(p2.x, p2.y, curveVertex.OFF_BEZ3));
+		this.verts.push(new curveVertex(p3.x, p3.y, curveVertex.ON_CURVE));
 	}
 };
 
@@ -130,7 +130,7 @@ const header = {
 	minor_version:	u8,	// Format minor version (starting at 0)
 	hdrSize:		u8,	// Header size (bytes)
 	offset_size:	u8,	// Absolute offset (0) size
-	extra:	binary.Buffer(obj => obj.hdrSize - 4),
+	extra:	binary.Buffer(s => s.obj.hdrSize - 4),
 };
 
 const index = {
@@ -1126,9 +1126,9 @@ const PREDEFINED_CHARSETS: Record<number, Record<number, SID>> = {
 	
 class Charset {
 	static Reader = binary.Switch(u8, {
-		0: binary.ArrayType(obj => obj.count, u16),
-		1: binary.RemainingArrayType(binary.as({first: u16, nLeft: u8},		(v, obj) => v.first + v.nLeft < obj.count ? v : undefined)),
-		2: binary.RemainingArrayType(binary.as({first: u16, nLeft: u16},	(v, obj) => v.first + v.nLeft < obj.count ? v : undefined)),
+		0: binary.ArrayType(s => s.obj.count, u16),
+		1: binary.RemainingArrayType(binary.as({first: u16, nLeft: u8},		(v, s) => v.first + v.nLeft < s.obj.count ? v : undefined)),
+		2: binary.RemainingArrayType(binary.as({first: u16, nLeft: u16},	(v, s) => v.first + v.nLeft < s.obj.count ? v : undefined)),
 	});
 
 	table: any;//Record<number, SID>;
@@ -1148,7 +1148,7 @@ abstract class FDSelector {
 
 const FDSelect = {
 	format:	u8,
-	data: as<FDSelector>(binary.Switch(obj => obj.format, {
+	data: as<FDSelector>(binary.Switch(s => s.obj.format, {
 		0: class X0 extends binary.Class(binary.RemainingArrayType(u8)) {
 			get(i: number) { return this[i]; }
 		},

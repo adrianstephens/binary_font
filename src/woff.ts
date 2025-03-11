@@ -2,7 +2,7 @@ import * as zlib from 'zlib';
 import * as xml from '@isopodlabs/xml';
 import * as binary from '@isopodlabs/binary';
 import {Font, vec2, Glyph, loadLocs, loadMetrics, readComposite, tableTypes} from './font';
-import {CURVE, curveVertex, curveExtent, parseCurve, makeCurveVertex} from './curves';
+import {curveVertex, curveExtent, parseCurve, makeCurveVertex} from './curves';
 import {float2} from './vector';
 
 const TAG		= binary.StringType(4);
@@ -29,7 +29,7 @@ const WOFFHeader = {
 	privOffset:		u32,	//Offset to private data block, from beginning of WOFF file.
 	privLength:		u32,	//Length of private data block.
 
-	tables:	binary.ArrayType(obj => obj.numTables, {
+	tables:	binary.ArrayType(s => s.obj.numTables, {
 		tag:			TAG,	//4-byte sfnt table identifier.
 		offset:			u32,	//Offset to the data, from beginning of WOFF file.
 		compLength:		u32,	//Length of the compressed data, excluding padding.
@@ -206,24 +206,24 @@ const WOFF2Header = {
 	privOffset:		u32,	//Offset to private data block, from beginning of WOFF file.
 	privLength:		u32,	//Length of private data block.
 
-	tables:	binary.ArrayType(obj => obj.numTables, {
+	tables:	binary.ArrayType(s => s.obj.numTables, {
 		flags:				u8,		//table type and flags
-		tag:				binary.Switch(obj => (obj.flags & 63) === 63 ? 1 : 0, {
-			0: binary.Func(obj => KnownTags[obj.flags & 63]),
+		tag:				binary.Switch(s => (s.obj.flags & 63) === 63 ? 1 : 0, {
+			0: binary.Func(s => KnownTags[s.obj.flags & 63]),
 			1: TAG,
 		}),
 		origLength:			UIntBase128,
 		// transformed length (if applicable)
-		transformLength:	binary.Optional(obj => (obj.tag == 'glyf' || obj.tag == 'loca') === !(obj.flags >> 6), UIntBase128),
+		transformLength:	binary.Optional(s => (s.obj.tag == 'glyf' || s.obj.tag == 'loca') === !(s.obj.flags >> 6), UIntBase128),
 		data:				binary.DontRead<Uint8Array>(),
 	}),
 
-	sub:	binary.Optional(obj => obj.flavor === 'ttcf', {
+	sub:	binary.Optional(s => s.obj.flavor === 'ttcf', {
 		version:	u32,
 		subs:		binary.ArrayType(UShort255, {
 			numTables:		UShort255,
 			flavor:			u32,
-			table_indices:	binary.ArrayType(obj => obj.numTables, UShort255),
+			table_indices:	binary.ArrayType(s => s.obj.numTables, UShort255),
 		})
 	}),
 };
@@ -295,7 +295,7 @@ class WOFF2TransformedGlyf extends binary.Class({
 						for (let i = 0; i < np; ++i) {
 							const flags = u8.get(ffile);
 							pt = pt.add(decodeTriplet(flags, gfile));
-							curve.push(makeCurveVertex(pt, i === 0 ? CURVE.ON_BEGIN : flags & 0x80 ? CURVE.OFF_BEZ2 : CURVE.ON_CURVE));
+							curve.push(makeCurveVertex(pt, i === 0 ? curveVertex.ON_BEGIN : flags & 0x80 ? curveVertex.OFF_BEZ2 : curveVertex.ON_CURVE));
 						}
 					}
 					const ins = UShort255.get(gfile);

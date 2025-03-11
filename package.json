@@ -28,15 +28,12 @@
     "eslint": "^9.21.0",
     "ts-node": "^10.9.2",
     "ts-patch": "^3.3.0",
-    "typescript-eslint": "^8.26.0",
-		"typescript": "npm:@isopodlabs/typescript@^5.8.0"
+    "typescript": "^5.8.2",
+    "typescript-eslint": "^8.26.0"
   },
   "dependencies": {
     "@isopodlabs/binary": "^1.0.3",
     "@isopodlabs/xml": "^1.0.3"
   },
-  "overrides": {
-		"typescript": "npm:@isopodlabs/typescript@^5.8.0"
-	},
-  "version": "0.2.0"
+  "version": "0.3.0"
 }

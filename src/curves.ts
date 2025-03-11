@@ -20,28 +20,27 @@ export interface color {
 //	curves
 //-----------------------------------------------------------------------------
 
-export const enum CURVE {
-	ON_BEGIN	= 0,
-	ON_CURVE	= 1,
-	OFF_BEZ2	= 2,
-	OFF_BEZ3	= 3,
-	OFF_ARC		= 8,
-	ON_ARC		= 9,
-}
-
 export class curveVertex extends float2 {
-	constructor(x: number, y: number, public flags: CURVE) {
+	static readonly ON_BEGIN	= 0;
+	static readonly ON_CURVE	= 1;
+	static readonly OFF_BEZ2	= 2;
+	static readonly OFF_BEZ3	= 3;
+	static readonly OFF_ARC		= 8;
+	static readonly ON_ARC		= 9;
+	
+	constructor(x: number, y: number, public flags: number) {
 		super(x, y);
 	}
 }
-export function makeCurveVertex(pt: float2, flags: CURVE) {
+
+export function makeCurveVertex(pt: float2, flags: number) {
 	return new curveVertex(pt.x, pt.y, flags);
 }
 
 export function reverseCurve(curve: curveVertex[]) {
 	for (let i = 0, e = curve.length; i != e;) {
 		let	z = ++i;
-		while (z != e && curve[z].flags != 0)
+		while (z != e && curve[z].flags != curveVertex.ON_BEGIN)
 			++z;
 
 		for (let j = z; i < --j; i++)
@@ -61,7 +60,7 @@ export function direction(curve: curveVertex[]) {
 	let	loop	= -1;
 
 	for (let i = 0; i < curve.length; ++i) {
-		if (curve[i].flags == CURVE.ON_BEGIN) {
+		if (curve[i].flags == curveVertex.ON_BEGIN) {
 			if (min0 == loop)
 				min1 = i;
 			loop	= i;
@@ -209,8 +208,8 @@ export function parseCurve(curves: curveVertex[]): CurveSource {
 	let prev			= float2(0, 0);
 	let prev2			= float2(0, 0);
 	let prev3			= float2(0, 0);
-	let prev_flags		= CURVE.ON_BEGIN;
-	let prev2_flags 	= CURVE.ON_BEGIN;
+	let prev_flags		= curveVertex.ON_BEGIN;
+	let prev2_flags 	= curveVertex.ON_BEGIN;
 
 	function on_curve(t: CurveSink, pt: float2) {
 		switch (prev_flags) {
@@ -242,7 +241,7 @@ export function parseCurve(curves: curveVertex[]): CurveSource {
 				let flags		= i.flags;
 				let pt: float2	= i;
 				switch (flags) {
-					case CURVE.ON_BEGIN:
+					case curveVertex.ON_BEGIN:
 						if (prev_flags) {
 							on_curve(sink, start);
 							sink.End();
@@ -251,16 +250,16 @@ export function parseCurve(curves: curveVertex[]): CurveSource {
 						start	= pt;
 						break;
 		
-					case CURVE.ON_CURVE:
+					case curveVertex.ON_CURVE:
 						on_curve(sink, pt);
 						break;
 		
-					case CURVE.OFF_BEZ2:
+					case curveVertex.OFF_BEZ2:
 						if (prev_flags > 1)
 							on_curve(sink, mid(prev, pt));
 						break;
 		
-					case CURVE.OFF_BEZ3:
+					case curveVertex.OFF_BEZ3:
 						if (prev_flags == 8) {
 							on_curve(sink, pt);
 							[pt, prev] = [prev, pt];
@@ -268,14 +267,14 @@ export function parseCurve(curves: curveVertex[]): CurveSource {
 						} else if (prev_flags > 2 && prev2_flags > 1) {
 							on_curve(sink, mid(prev, pt));
 							prev	= mid(prev, pt);
-							flags	= CURVE.OFF_BEZ2;
+							flags	= curveVertex.OFF_BEZ2;
 						}
 						break;
 		
-					case CURVE.OFF_ARC:
+					case curveVertex.OFF_ARC:
 						break;
 		
-					case CURVE.ON_ARC:
+					case curveVertex.ON_ARC:
 						sink.Arc3(prev, prev.add(prev.sub(prev2)), pt);
 						break;
 				}
@@ -291,7 +290,7 @@ export function parseCurve(curves: curveVertex[]): CurveSource {
 			if (prev_flags) {
 				on_curve(sink, start);
 				sink.End();
-				prev_flags = CURVE.ON_BEGIN;
+				prev_flags = curveVertex.ON_BEGIN;
 			}
 		}
 	};
