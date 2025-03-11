@@ -1,6 +1,6 @@
 # Binary Fonts
 
-This package provides readers for various font formats, using the @isopodlabs/binary binary file loading library.
+This package provides readers for various font formats, using the @isopodlabs/binary, and the @isopodlabs/xml libraries.
 
 It supports reading type 1, TTF, SVG, bitmap and color glyphs.
 
@@ -8,27 +8,34 @@ Non bitmap glyphs can be converted to SVGs.
 
 
 ## Usage
-Here's an example of how to use the binary_font package to read a font file:
+Here's an example of how to use the binary_font package to read a font file and output an svg for the glyph representing 'A':
 ```typescript
-import { readFileSync } from 'fs';
-import { Font } from 'binary_font';
+import { readFileSync, writeFileSync } from 'fs';
+import { fontLoad, Font } from '@isopodlabs/binary_font';
 
 // Load a font file
 const fontData = readFileSync('path/to/font.ttf');
 
 // Parse the font
-const font = new Font(fontData);
+const font = load(fontData);
+if (font && font instanceof Font) {
 
-// Access font properties
-console.log(font.numGlyphs());
+    // Access font properties
+    console.log(font.numGlyphs());
 
-const mapping = font.getGlyphMapping();
-const id = mapping['A'.charCodeAt(0)];
-const glyph = font.getGlyph(id);
+    const mapping = font.getGlyphMapping();
+	if (mapping) {
+        const id = mapping['A'.charCodeAt(0)];
+        const svg = font.getGlyphSVG(id);
+		if (svg)
+			writeFileSync('./glyph.svg', svg.toString());
+    }
+}
+
 ```
 
 ## Supported File Types
-he binary_font package supports reading and parsing the following font formats:
+The binary_font package supports reading and parsing the following font formats:
 
 - TrueType Fonts (TTF)
 - TrueType Collections (TTC)
@@ -103,6 +110,23 @@ The Font class provides methods to access font properties and glyph data.
     Returns the SVG representation of the specified glyph ID.
 #### Properties
 Each block found in the font exists as a property on the Font class. The properties are typed according to the specs used to read them.
+
+### FontGroup
+The FontGroup holds an array of Fonts read from, say, a TTC file
+#### Methods
+- `getSub(sub: string): Font | undefined`
+
+    Returns the font with the matching name.
+
+#### Properties
+- `fonts: Font[]`
+
+    The array of fonts.
+
+### Functions
+- `load(data: Uint8Array): Promise<Font | FontGroup | undefined>`
+
+    loads the font data from the given data array.
 
 ## License
 

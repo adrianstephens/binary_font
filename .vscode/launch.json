@@ -7,10 +7,18 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Run ts-node",
+            "name": "Test vectors",
             "runtimeExecutable": "ts-node",
             "cwd": "${workspaceFolder}",
             "args": ["tests/testvec.ts"]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Test fonts",
+            "runtimeExecutable": "ts-node",
+            "cwd": "${workspaceFolder}",
+            "args": ["tests/testfont.ts"]
         },
         {
             "type": "node-terminal",

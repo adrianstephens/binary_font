@@ -287,7 +287,7 @@ const enum op {
 	rrcurveto		= 0x08,
 //	closepath		= 0x09,//+
 	callsubr		= 0x0a,
-	return			= 0x0b,
+	_return			= 0x0b,
 	escape			= 0x0c,
 //	hsbw			= 0x0d,//+
 	endchar			= 0x0e,
@@ -442,7 +442,7 @@ class CFF_VM extends PS_VM {
 					// flow control
 					case op.callsubr:	this.Interpret(this.lsubrs.get(pop())); break;
 					case op.callgsubr:	this.Interpret(this.gsubrs.get(pop()));	break;
-					case op.return:		return;
+					case op._return:		return;
 					case op.endchar:	this.stclear(0); return;
 
 					// hint ops
@@ -805,7 +805,7 @@ const propTypes = {
 	[prop.FDArray]:				(v: number[], cff: CFF, buffer: Uint8Array) => binary.read(new binary.stream(buffer.subarray(v[0])), index).map(i => new Dictionary(cff, buffer, i)),
 	[prop.FDSelect]:			(v: number[], cff: CFF, buffer: Uint8Array) => binary.read(new binary.stream(buffer.subarray(v[0])), FDSelect),
 	[prop.FontName]:			PropString,
-} as const;
+};
 
 export type PROP = keyof typeof propTypes;
 

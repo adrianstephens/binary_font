@@ -5,7 +5,6 @@ import {color, CURVE, curveVertex, curveExtent, parseCurve, FILL, EXTEND, Fill, 
 
 import {CFF} from "./cff";
 import {CPAL, COLR} from "./colr";
-import {WOFF, WOFF2} from "./woff";
 
 function makeClass<I>() {
 	return (class {} as new () => I);
@@ -1684,7 +1683,7 @@ const SFNTHeader = {
 	}),
 };
 
-class TTF extends Font {
+export class TTF extends Font {
 	static check(data: Uint8Array) {
 		const u	= u32.get(new binary.stream(data));
 		return u == 0x00010000 || u == binary.utils.stringCode('true') || u == binary.utils.stringCode('typ1');
@@ -1739,7 +1738,7 @@ const TTCHeader2 = {
 	offset:			u32,	// The offset (in bytes) of the DSIG table from the beginning of the TTC file (null if no signature)
 };
 */
-class TTC extends FontGroup {
+export class TTC extends FontGroup {
 	static check(data: Uint8Array) {
 		return TAG.get(new binary.stream(data)) === 'ttcf';
 	}
@@ -1757,29 +1756,3 @@ class TTC extends FontGroup {
 	}
 }
 
-//-----------------------------------------------------------------------------
-//	Load Font
-//-----------------------------------------------------------------------------
-
-export async function load(data: Uint8Array): Promise<Font | FontGroup | undefined> {
-	if (data.length < 256)
-		return;
-
-	const file		= new binary.stream(data);
-	const tag		= TAG.get(file);
-	switch (tag) {
-		default:
-			if (binary.utils.stringCode(tag) != 0x00000100)
-				break;
-			//fall through
-		case 'true':
-		case 'typ1':
-		case 'OTTO':
-			file.seek(0);
-			return new TTF(file);
-
-		case 'ttcf': return new TTC(file);
-		case 'wOFF': return WOFF.load(file);
-		case 'wOF2': return WOFF2.load(file);
-	}
-}
