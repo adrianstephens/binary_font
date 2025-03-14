@@ -45,22 +45,28 @@ The binary_font package supports reading and parsing the following font formats:
 
 The following data blocks are supported:
 
-- OS/2
-- head
-- hhea
-- vhea
-- maxp
-- name
-- cmap
-- gasp
-- sbix
-- GSUB
-- GPOS
+- OS/2  OS/2 and Windows Metrics Table
+- head  Font Header Table
+- hhea  Horizontal Header Table
+- hmtx  Horizontal Metrics Table
+- vhea  Vertical Header Table
+- vmtx  Vertical Metrics Table
+- maxp  Maximum Profile
+- name  Naming Table
+- cmap  Character to Glyph Index Mapping Table
+- gasp  Grid-fitting and Scan-conversion Procedure Table
+- sbix  Standard Bitmap Graphics Table
+- EBLC  Embedded Bitmap Location Table
+- EBDT  Embedded Bitmap Data Table
+- CBLC  Color Bitmap Location Table
+- CBDT  Color Bitmap Data Table
+- GSUB  Glyph Substitution Table
+- GPOS  Glyph Positioning Table
 - CPAL  Color Palette Table
 - COLR  Color Table
 - SVG   Scalable Vector Graphics
 - CFF   Compact Font Format
-- DSIG
+- DSIG  Digital Signature Table
 
 ## API
 
@@ -118,9 +124,6 @@ The Font class provides methods to access font properties and glyph data.
 - `getGlyphMapping(): number[] | undefined`
 
     Returns the glyph mapping array.
-- `getGlyphImages(ppem: number): GlyphImage[] | undefined`
-
-    Returns the glyph images for the specified pixels per em (ppem).
 - `getGlyphImage(id: number, ppem: number): GlyphImage | undefined`
 
     Returns the glyph image for the specified glyph ID at the specified pixels per em (ppem).

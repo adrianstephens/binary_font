@@ -4,12 +4,17 @@ import * as fontbin from '../dist';
 
 (async() => {
 	// Load a font file
-	const font = await fontbin.loadFile('/System/Library/Fonts/Supplemental/Brush Script.ttf');
+	const font = await fontbin.loadFile('/Users/adrianstephens/Downloads/cbdt.ttf');
 
 	if (font && font instanceof fontbin.Font) {
 
 		// Access font properties
 		console.log(font.numGlyphs());
+
+		const image = font.getGlyphImage(3, 1024);
+		if (image)
+			await fs.writeFile('./glyph.png', image.data);
+
 
 		const mapping = font.getGlyphMapping();
 		if (mapping) {

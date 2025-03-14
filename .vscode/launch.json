@@ -20,6 +20,7 @@
             "runtimeExecutable": "ts-node",
             "cwd": "${workspaceFolder}",
             "args": ["tests/testfont.ts"],
+            "sourceMaps": true,
             "preLaunchTask": "npm: build"
         },
         {

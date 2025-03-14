@@ -1,3 +1,4 @@
+import { stat } from "fs";
 import ts, { factory } from "typescript";
 
 function isExported(node: ts.Declaration): boolean {
@@ -461,6 +462,31 @@ function resolveTypesTransformer(program: ts.Program): ts.TransformerFactory<ts.
 					typeformatflags = save;
 					//print("--TYPEDEF");
 	
+				} else if (ts.isInterfaceDeclaration(statement)) {
+					let int = statement;
+					const heritageClauses = int.heritageClauses;
+					if (heritageClauses) {
+						for (const i of heritageClauses) {
+							if (i.token === ts.SyntaxKind.ExtendsKeyword) {
+								if (i.types.length === 1) {
+									const base = fixType(i.types[0]);
+									if (ts.isTypeLiteralNode(base)) {
+										int = factory.updateInterfaceDeclaration(int,
+											int.modifiers,
+											int.name,
+											int.typeParameters,
+											undefined,
+										    [...base.members, ...int.members]
+										);
+									}
+								} else {
+									inherited.push(...i.types);
+								}
+							}
+						}
+					}
+					newStatements.push(int);
+
 				} else {
 					newStatements.push(statement);
 				}
