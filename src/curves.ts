@@ -1,13 +1,15 @@
 import {
-	float2,		circle,
+	float2,
+	extent2,
 	reflect,
 	float2x2, 	mul2x2,	inverse2x2, det2x2,
 	float2x3,	mul2x3, inverse2x3,
-	extent2,
 	matmul2,
 	max_circle_point,
 	mid,
-} from './vector';
+} from '@isopodlabs/maths/dist/vector';
+
+import { circle } from '@isopodlabs/maths/dist/geometry';
 
 export interface color {
 	r: number,
@@ -20,7 +22,7 @@ export interface color {
 //	curves
 //-----------------------------------------------------------------------------
 
-export class curveVertex extends float2 {
+export class curveVertex {
 	static readonly ON_BEGIN	= 0;
 	static readonly ON_CURVE	= 1;
 	static readonly OFF_BEZ2	= 2;
@@ -28,9 +30,9 @@ export class curveVertex extends float2 {
 	static readonly OFF_ARC		= 8;
 	static readonly ON_ARC		= 9;
 	
-	constructor(x: number, y: number, public flags: number) {
-		super(x, y);
+	constructor(public x: number, public y: number, public flags: number) {
 	}
+	get pos() { return float2(this.x, this.y); }
 }
 
 export function makeCurveVertex(pt: float2, flags: number) {
@@ -79,14 +81,14 @@ export function direction(curve: curveVertex[]) {
 		for (let i = min1; curve[i - 1].y == miny;)
 			mini = --i;
 	}
-	const next	= curve[mini + 1 == curve.length || mini + 1 == min1 ? min0 : mini + 1];
-	const prev	= curve[(mini == 0 || mini == min0 ? min1 : mini) - 1];
+	const next	= curve[mini + 1 == curve.length || mini + 1 == min1 ? min0 : mini + 1].pos;
+	const prev	= curve[(mini == 0 || mini == min0 ? min1 : mini) - 1].pos;
 
-	return next.sub(curve[mini]).cross(curve[mini].sub(prev)) < 0;
+	return next.sub(curve[mini].pos).cross(curve[mini].pos.sub(prev)) < 0;
 }
 
 export function transformCurve(curve: curveVertex[] | undefined, transform: float2x3) {
-	return curve ? curve.map(i => makeCurveVertex(mul2x3(transform, i), i.flags)) : [];
+	return curve ? curve.map(i => makeCurveVertex(mul2x3(transform, i.pos), i.flags)) : [];
 }
 
 //	translate between points-on-curve format and radii/angle format
@@ -213,13 +215,13 @@ export function parseCurve(curves: curveVertex[]): CurveSource {
 
 	function on_curve(t: CurveSink, pt: float2) {
 		switch (prev_flags) {
-			case 0:
-			case 1:
-			case 9:	t.Line(prev, pt); break;
-			case 2:	t.Bezier2(prev2, prev, pt); break;
-			case 3:	t.Bezier3(prev3, prev2, prev, pt); break;
-			case 8: {
-				if (prev2_flags == 8) {
+			case curveVertex.ON_BEGIN:
+			case curveVertex.ON_CURVE:
+			case curveVertex.ON_ARC:	t.Line(prev, pt); break;
+			case curveVertex.OFF_BEZ2:	t.Bezier2(prev2, prev, pt); break;
+			case curveVertex.OFF_BEZ3:	t.Bezier3(prev3, prev2, prev, pt); break;
+			case curveVertex.OFF_ARC:
+				if (prev2_flags == curveVertex.OFF_ARC) {
 					// 2 off-curve
 					t.Arc(prev3, prev2, prev, pt);
 					if (pt.sub(prev3).cross(pt.sub(prev2)) < 0)
@@ -231,15 +233,14 @@ export function parseCurve(curves: curveVertex[]): CurveSource {
 					prev	= pt.sub(reflect(prev.sub(prev2), pt.sub(prev2)));
 				}
 				break;
-			}
 		}
 	}
 
 	return {
 		run(sink: CurveSink) {
 			for (const i of curves) {
-				let flags		= i.flags;
-				let pt: float2	= i;
+				let flags	= i.flags;
+				let pt		= float2(i.x, i.y);
 				switch (flags) {
 					case curveVertex.ON_BEGIN:
 						if (prev_flags) {
@@ -442,7 +443,3 @@ export function parseSVGpath(path: string): CurveSource {
 		}
 	};
 }
-
-
-
-

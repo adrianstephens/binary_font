@@ -1,7 +1,7 @@
 
 import * as binary from '@isopodlabs/binary';
 import {curveVertex} from './curves';
-import {float2, extent2} from './vector';
+import {float2, extent2} from '@isopodlabs/maths/dist/vector';
 
 function as<T>(type: binary.Type) {
 	return binary.as(type, i => i as T);

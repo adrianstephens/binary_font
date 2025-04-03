@@ -1,6 +1,6 @@
 import * as binary from '@isopodlabs/binary';
 import * as xml from '@isopodlabs/xml';
-import {float2, float2x3, identity2x3, extent2} from './vector';
+import {float2, float2x3, identity2x3, extent2} from '@isopodlabs/maths/dist/vector';
 import {color, curveVertex, curveExtent, parseCurve, FILL, EXTEND, Fill, Layer, parseSVGpath, makeSVGPath} from './curves';
 
 import {CFF} from "./cff";
@@ -1838,9 +1838,9 @@ function makeSVG(children: xml.Element[], extent: extent2) {
 		xmlns:			"http://www.w3.org/2000/svg",
 		['xmlns:xlink']:"http://www.w3.org/1999/xlink",
 		version:		"1.1",
-		viewBox:		`${extent.min.x} ${extent.min.y} ${extent.ext.x} ${extent.ext.y}`,
-		width:			extent.ext.x,
-		height:			extent.ext.y
+		viewBox:		`${extent.min.x} ${extent.min.y} ${extent.extent().x} ${extent.extent().y}`,
+		width:			extent.extent().x,
+		height:			extent.extent().y
 	}, children);
 }
 

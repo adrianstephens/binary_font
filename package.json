@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "@isopodlabs/binary": "^1.4.0",
+    "@isopodlabs/maths": "^0.0.2",
     "@isopodlabs/xml": "^1.0.3"
   },
   "version": "0.3.2"

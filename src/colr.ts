@@ -4,8 +4,9 @@ import {
 	float2,
 	float2x2,	det2x2, 
 	float2x3,	identity2x3,	mul2x3,	matmul2,
-	circle,
-} from './vector';
+} from '@isopodlabs/maths/dist/vector';
+import { circle } from '@isopodlabs/maths/dist/geometry';
+
 import {color, curveVertex, transformCurve, reverseCurve, direction, FILL, Fill, Layer} from './curves';
 
 const u8 		= binary.UINT8;
@@ -193,8 +194,8 @@ class PaintRadialGradient extends binary.Class({
 	apply(ctx: PaintContext) {
 		ctx.addLayer({
 			type:		FILL.RADIAL,
-			c0:			circle(this.start_centre, this.start_radius),
-			c1:	 		circle(this.end_centre, this.end_radius),
+			c0:			new circle(this.start_centre, this.start_radius),
+			c1:	 		new circle(this.end_centre, this.end_radius),
 			gradient:	ctx.makeGradient(this.colorLine)
 		});
 	}
