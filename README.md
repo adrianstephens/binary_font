@@ -7,6 +7,9 @@ It supports reading type 1, TTF, SVG, bitmap and color glyphs.
 Non bitmap glyphs can be converted to SVGs.
 
 
+## ☕ Support My Work  
+If you use this package, consider [buying me a tea](https://coff.ee/adrianstephens) to support future updates!  
+
 ## Usage
 Here's an example of how to use the binary_font package to read a font file and output an svg for the glyph representing 'A':
 ```typescript
