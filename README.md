@@ -1,4 +1,7 @@
 # Binary Fonts
+[![npm version](https://img.shields.io/npm/v/@isopodlabs/binary.svg)](https://www.npmjs.com/package/@isopodlabs/binary_fonts)
+[![GitHub stars](https://img.shields.io/github/stars/adrianstephens/binary_font.svg?style=social)](https://github.com/adrianstephens/binary_font)
+[![License](https://img.shields.io/npm/l/@isopodlabs/binary_fonts.svg)](LICENSE)
 
 This package provides readers for various font formats, using the @isopodlabs/binary, and the @isopodlabs/xml libraries.
 

@@ -1,29 +1,29 @@
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "commonjs",
-    "strict": true,
-    "declaration": true,
-    "stripInternal": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
+	"compilerOptions": {
+		"target": "ES2022",
+		"module": "commonjs",
+		"strict": true,
+		"declaration": true,
+		"stripInternal": true,
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"forceConsistentCasingInFileNames": true,
 		"sourceMap": true,
-    "outDir": "./dist",
-    "rootDir": "src",
-    "plugins": [
-      {
-        "transform": "./transform.ts",
-        "afterDeclarations": true
-      }
-    ]
-    },
-  "include": [
-    "src/**/*.ts",
-    "test/**/*.ts",
-  ],
-  "exclude": [
-    "node_modules",
-    "**/*.spec.ts"
-  ]
+		"outDir": "./dist",
+		"rootDir": "src",
+		"plugins": [
+			{
+				"transform": "./transform.ts",
+				"afterDeclarations": true
+			}
+		]
+	},
+	"include": [
+		"src/**/*.ts",
+		"test/**/*.ts",
+	],
+	"exclude": [
+		"node_modules",
+		"**/*.spec.ts"
+	]
 }
